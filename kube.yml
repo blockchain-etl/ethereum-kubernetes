@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: parity-config
+  namespace: default
+data:
+  parity.toml: |
+    [parity]
+    mode = "dark"
+    base_path = "/data"
+    [footprint]
+    db_compaction = "hdd"
+    pruning_memory = 128
+    tracing = "off"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: parity
+spec:
+  serviceName: "parity"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: parity
+  template:
+    metadata:
+      labels:
+        app: parity
+    spec:
+      containers:
+      - name: parity
+        image: parity/parity:v1.9.4
+        args: ["--config=/config/parity.toml"]
+        volumeMounts:
+        - name: parity-config
+          mountPath: /config
+        - name: pvc
+          mountPath: /data
+      volumes:
+        - name: parity-config
+          configMap:
+            name: parity-config
+  volumeClaimTemplates:
+  - metadata:
+      name: pvc
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
