@@ -1,0 +1,48 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: snapshot-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: kube-system
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: snapshot-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: snapshot-controller
+    spec:
+      containers:
+      - name: snapshot-controller
+        image: dippynark/snapshot-controller
+        imagePullPolicy: Always
+        args:
+        - -cloudprovider=gce
+      - name: snapshot-provisioner
+        image: dippynark/snapshot-provisioner
+        imagePullPolicy: Always
+        args:
+        - -cloudprovider=gce
+      nodeSelector:
+        cloud.google.com/gke-nodepool: snapshotter
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: snapshot-promoter
+provisioner: volumesnapshot.external-storage.k8s.io/snapshot-promoter
+parameters:
+  type: pd-standard
