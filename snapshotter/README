@@ -1,0 +1,28 @@
+# create environment
+gcloud beta composer environments create snapshotter \
+  --zone=us-central1-a \
+  --machine-type=g1-small \
+  --disk-size="20GB" \
+  --airflow-version=1.10.1 \
+  --python-version=3
+
+# install package dependencies
+gcloud composer environments update snapshotter \
+  --update-pypi-packages-from-file=requirements-composer.txt
+
+# create node pool
+gcloud container node-pools create snapshotter \
+  --cluster <cluster> \
+  --zone=us-central1-a \
+  --machine-type=g1-small \
+  --num-nodes=1 \
+  --scopes=gke-default,compute-rw
+
+# deploy snapshot controller resources
+kubectl create -f k8s/snapshot-controller.yaml
+
+# deploy ethereum snapshotter resources
+kubectl create -f k8s/ethereum-snapshotter.yaml
+
+# copy DAG
+gsutil cp ethereum_snapshotter_dag.py gs://<bucket>/dags
